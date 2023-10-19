@@ -1,6 +1,8 @@
 package netbox
 
 import (
+	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/fbreckle/go-netbox/netbox/client"
@@ -181,6 +183,8 @@ func resourceNetboxSiteCreate(d *schema.ResourceData, m interface{}) error {
 	}
 
 	params := dcim.NewDcimSitesCreateParams().WithData(&data)
+	fmt.Printf("\n Created params for site update with data: %+v", data)
+	fmt.Printf("\n The Params %v", params)
 
 	res, err := api.Dcim.DcimSitesCreate(params, nil)
 	if err != nil {
@@ -208,6 +212,7 @@ func resourceNetboxSiteRead(d *schema.ResourceData, m interface{}) error {
 				return nil
 			}
 		}
+		log.Printf("Error encountered: %v", err)
 		return err
 	}
 
@@ -219,6 +224,7 @@ func resourceNetboxSiteRead(d *schema.ResourceData, m interface{}) error {
 	d.Set("description", site.Description)
 	d.Set("facility", site.Facility)
 	d.Set("longitude", site.Longitude)
+	fmt.Printf("\n Read Longitude %v", site.Longitude)
 	d.Set("latitude", site.Latitude)
 	d.Set("physical_address", site.PhysicalAddress)
 	d.Set("shipping_address", site.ShippingAddress)
@@ -341,6 +347,8 @@ func resourceNetboxSiteUpdate(d *schema.ResourceData, m interface{}) error {
 
 	params := dcim.NewDcimSitesPartialUpdateParams().WithID(id).WithData(&data)
 
+	fmt.Printf("\n Updated params for site update with ID %d and data: %+v", id, data)
+	fmt.Printf("\n The Params %v", params)
 	_, err := api.Dcim.DcimSitesPartialUpdate(params, nil)
 	if err != nil {
 		return err
