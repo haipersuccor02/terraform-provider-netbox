@@ -1,6 +1,7 @@
 package netbox
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strconv"
@@ -8,6 +9,8 @@ import (
 	"github.com/fbreckle/go-netbox/netbox/client"
 	"github.com/fbreckle/go-netbox/netbox/client/dcim"
 	"github.com/fbreckle/go-netbox/netbox/models"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
@@ -16,13 +19,13 @@ var resourceNetboxSiteStatusOptions = []string{"planned", "staging", "active", "
 
 func resourceNetboxSite() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceNetboxSiteCreate,
-		Read:   resourceNetboxSiteRead,
-		Update: resourceNetboxSiteUpdate,
-		Delete: resourceNetboxSiteDelete,
+		CreateContext: resourceNetboxSiteCreate,
+		ReadContext:   resourceNetboxSiteRead,
+		UpdateContext: resourceNetboxSiteUpdate,
+		Delete:        resourceNetboxSiteDelete,
 
 		Description: `:meta:subcategory:Data Center Inventory Management (DCIM):From the [official documentation](https://docs.netbox.dev/en/stable/features/sites-and-racks/#sites):
-
+ 
 > How you choose to employ sites when modeling your network may vary depending on the nature of your organization, but generally a site will equate to a building or campus. For example, a chain of banks might create a site to represent each of its branches, a site for its corporate headquarters, and two additional sites for its presence in two colocation facilities.
 >
 > Each site must be assigned a unique name and may optionally be assigned to a region and/or tenant.`,
@@ -105,7 +108,8 @@ func resourceNetboxSite() *schema.Resource {
 	}
 }
 
-func resourceNetboxSiteCreate(d *schema.ResourceData, m interface{}) error {
+func resourceNetboxSiteCreate(ctx context.Context, d *schema.ResourceData, m any) (diags diag.Diagnostics) {
+	tflog.Debug(ctx, fmt.Sprintf("Created Logsss"))
 	api := m.(*client.NetBoxAPI)
 
 	data := models.WritableSite{}
@@ -184,19 +188,31 @@ func resourceNetboxSiteCreate(d *schema.ResourceData, m interface{}) error {
 
 	params := dcim.NewDcimSitesCreateParams().WithData(&data)
 	fmt.Printf("\n Created params for site update with data: %+v", data)
+	log.Printf("[DEBUG] Created params for site update with data: %+v", data)
+	tflog.Debug(ctx, fmt.Sprintf("[DEBUG] Created params for site update with data: %+v", data))
 	fmt.Printf("\n The Params %v", params)
+
+	// res, err := api.Dcim.DcimSitesCreate(params, nil)
+	// if err != nil {
+	// 	return err
+	// }
 
 	res, err := api.Dcim.DcimSitesCreate(params, nil)
 	if err != nil {
-		return err
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Error creating the site",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
 	d.SetId(strconv.FormatInt(res.GetPayload().ID, 10))
 
-	return resourceNetboxSiteRead(d, m)
+	return resourceNetboxSiteRead(ctx, d, m)
 }
 
-func resourceNetboxSiteRead(d *schema.ResourceData, m interface{}) error {
+func resourceNetboxSiteRead(ctx context.Context, d *schema.ResourceData, m any) (diags diag.Diagnostics) {
 	api := m.(*client.NetBoxAPI)
 	id, _ := strconv.ParseInt(d.Id(), 10, 64)
 	params := dcim.NewDcimSitesReadParams().WithID(id)
@@ -204,16 +220,20 @@ func resourceNetboxSiteRead(d *schema.ResourceData, m interface{}) error {
 	res, err := api.Dcim.DcimSitesRead(params, nil)
 
 	if err != nil {
-		if errresp, ok := err.(*dcim.DcimSitesReadDefault); ok {
-			errorcode := errresp.Code()
-			if errorcode == 404 {
-				// If the ID is updated to blank, this tells Terraform the resource no longer exists (maybe it was destroyed out of band). Just like the destroy callback, the Read function should gracefully handle this case. https://www.terraform.io/docs/extend/writing-custom-providers.html
-				d.SetId("")
-				return nil
-			}
-		}
-		log.Printf("Error encountered: %v", err)
-		return err
+		return diag.FromErr(
+			fmt.Errorf(
+				"Error"),
+		)
+		// if errresp, ok := err.(*dcim.DcimSitesReadDefault); ok {
+		// 	errorcode := errresp.Code()
+		// 	if errorcode == 404 {
+		// 		// If the ID is updated to blank, this tells Terraform the resource no longer exists (maybe it was destroyed out of band). Just like the destroy callback, the Read function should gracefully handle this case. https://www.terraform.io/docs/extend/writing-custom-providers.html
+		// 		d.SetId("")
+		// 		return nil
+		// 	}
+		// }
+		// log.Printf("Error encountered: %v", err)
+		// return err
 	}
 
 	site := res.GetPayload()
@@ -225,7 +245,12 @@ func resourceNetboxSiteRead(d *schema.ResourceData, m interface{}) error {
 	d.Set("facility", site.Facility)
 	d.Set("longitude", site.Longitude)
 	fmt.Printf("\n Read Longitude %v", site.Longitude)
+	log.Printf("[DEBUG] Read Longitude %v", site.Longitude)
+	tflog.Debug(ctx, fmt.Sprintf("Read Longitude %v", site.Longitude))
 	d.Set("latitude", site.Latitude)
+	fmt.Printf("\n Read Longitude %v", site.Latitude)
+	log.Printf("[DEBUG] Read Longitude %v", site.Latitude)
+	tflog.Debug(ctx, fmt.Sprintf("Read Longitude %v", site.Latitude))
 	d.Set("physical_address", site.PhysicalAddress)
 	d.Set("shipping_address", site.ShippingAddress)
 	d.Set("timezone", site.TimeZone)
@@ -258,7 +283,7 @@ func resourceNetboxSiteRead(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func resourceNetboxSiteUpdate(d *schema.ResourceData, m interface{}) error {
+func resourceNetboxSiteUpdate(ctx context.Context, d *schema.ResourceData, m any) (diags diag.Diagnostics) {
 	api := m.(*client.NetBoxAPI)
 
 	id, _ := strconv.ParseInt(d.Id(), 10, 64)
@@ -348,13 +373,24 @@ func resourceNetboxSiteUpdate(d *schema.ResourceData, m interface{}) error {
 	params := dcim.NewDcimSitesPartialUpdateParams().WithID(id).WithData(&data)
 
 	fmt.Printf("\n Updated params for site update with ID %d and data: %+v", id, data)
-	fmt.Printf("\n The Params %v", params)
+	tflog.Debug(ctx, fmt.Sprintf("[DEBUG] Updated params for site update with data: %+v", data))
+	tflog.Debug(ctx, fmt.Sprintf("\n The Params %v", params))
+	// _, err := api.Dcim.DcimSitesPartialUpdate(params, nil)
+	// if err != nil {
+	// 	return err
+	// }
+
 	_, err := api.Dcim.DcimSitesPartialUpdate(params, nil)
 	if err != nil {
-		return err
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Error creating the site",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
-	return resourceNetboxSiteRead(d, m)
+	return resourceNetboxSiteRead(ctx, d, m)
 }
 
 func resourceNetboxSiteDelete(d *schema.ResourceData, m interface{}) error {

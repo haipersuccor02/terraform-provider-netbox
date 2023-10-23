@@ -17,6 +17,7 @@ services:
     ports:
       - 8001:8080
     environment:
+      - TF_LOG=DEBUG
       - CORS_ORIGIN_ALLOW_ALL=True
       - DB_NAME=netbox
       - DB_USER=netbox

@@ -55,6 +55,8 @@ resource "netbox_site" "test" {
 					resource.TestCheckResourceAttr("netbox_site.test", "asn_ids.#", "1"),
 					resource.TestCheckResourceAttrPair("netbox_site.test", "asn_ids.0", "netbox_asn.test", "id"),
 					resource.TestCheckResourceAttrPair("netbox_site.test", "group_id", "netbox_site_group.test", "id"),
+					resource.TestCheckResourceAttr("netbox_site.test", "latitude", "12.123456"),
+					resource.TestCheckResourceAttr("netbox_site.test", "longitude", "-13.123456"),
 				),
 			},
 			{
